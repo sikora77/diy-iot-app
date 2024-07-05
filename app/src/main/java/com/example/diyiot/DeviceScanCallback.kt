@@ -12,7 +12,6 @@ class DeviceScanCallback:ScanCallback() {
     public override fun onScanResult(callbackType:Int, result:ScanResult){
         devices[result.device.address] = result
         devicesData.postValue(devices)
-        println(devices)
         super.onScanResult(callbackType, result)
     }
     public override fun onScanFailed(errorCode: Int) {
@@ -20,11 +19,6 @@ class DeviceScanCallback:ScanCallback() {
     }
 
     override fun onBatchScanResults(results: MutableList<ScanResult>?) {
-        results?.forEach{
-            println(it.device.name)
-            println(it.scanRecord?.serviceUuids)
-
-        }
         super.onBatchScanResults(results)
 
     }
