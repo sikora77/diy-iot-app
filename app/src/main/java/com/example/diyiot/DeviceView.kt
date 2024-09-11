@@ -39,6 +39,23 @@ import okhttp3.Request
 import okhttp3.Response
 import okio.IOException
 
+fun <T> makePairsFromList(list:List<T>?) : List<Pair<T,T?>>?{
+    if(list == null){
+        return null;
+    }
+    println("List not null")
+    val resultList = mutableListOf<Pair<T, T?>>();
+    for (i in list.indices step 2) {
+        resultList.add(
+            Pair(
+                list[i],
+                if (list.size > i + 1) list[i + 1] else null
+            )
+        )
+    }
+    return resultList
+}
+
 @Composable
 fun DeviceView(
     onNavigateToDetails: (String) -> Unit,
@@ -49,12 +66,11 @@ fun DeviceView(
 
     val client = OkHttpClient()
     val cookie = getCookie(context).toString()
-    val devicesList = MutableLiveData<List<Light>>()
+    val devicesList = MutableLiveData< List<Pair<Light,Light?>>>()
     val devices by devicesList.observeAsState()
     val request = Request.Builder().url("http://frog01.mikr.us:22070/api/v1/full_devices")
         .header("Cookie", cookie)
         .get().build()
-
     client.newCall(request).enqueue(object : Callback {
         override fun onFailure(call: Call, e: IOException) {
             // Handle this
@@ -65,11 +81,13 @@ fun DeviceView(
 //            println(body)
             if (response.code == 200) {
                 val gson = Gson()
+                val pears =  makePairsFromList(gson.fromJson(
+                    body,
+                    GetDevicesResponse::class.java
+                ).lights)
+                println(pears)
                 devicesList.postValue(
-                    gson.fromJson(
-                        body,
-                        GetDevicesResponse::class.java
-                    ).lights
+                   pears
                 )
             } else {
                 println("Auth failure")
@@ -126,10 +144,18 @@ fun DeviceView(
                 Spacer(modifier = Modifier.weight(1f))
             }
             LazyColumn {
+//                println(devicesList.value)
 
                 if (devices != null) {
+                    println(devices!!)
                     items(devices!!) { item ->
-                        LightView(item, cookie, onNavigateToDetails, device)
+                        Row {
+                            LightView(item.first, cookie, onNavigateToDetails, device)
+                            if (item.second != null) {
+                                LightView(item.second!!, cookie, onNavigateToDetails, device)
+                            }
+
+                        }
                     }
                 }
             }
