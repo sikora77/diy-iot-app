@@ -5,15 +5,17 @@ import android.bluetooth.le.ScanCallback
 import android.bluetooth.le.ScanResult
 import androidx.lifecycle.MutableLiveData
 
-class DeviceScanCallback:ScanCallback() {
-    var devicesData = MutableLiveData<MutableMap<String,ScanResult>>()
-    var devices : MutableMap<String,ScanResult> = mutableMapOf()
+class DeviceScanCallback(var updateDevices: (MutableMap<String, ScanResult> ) -> Unit) : ScanCallback() {
+
+    var devicesData = MutableLiveData<MutableMap<String, ScanResult>>()
+    var devices: MutableMap<String, ScanResult> = mutableMapOf()
     @SuppressLint("MissingPermission")
-    public override fun onScanResult(callbackType:Int, result:ScanResult){
+    public override fun onScanResult(callbackType: Int, result: ScanResult) {
         devices[result.device.address] = result
-        devicesData.postValue(devices)
+        this.updateDevices(devices)
         super.onScanResult(callbackType, result)
     }
+
     public override fun onScanFailed(errorCode: Int) {
         super.onScanFailed(errorCode)
     }

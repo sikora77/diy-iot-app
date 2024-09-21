@@ -61,6 +61,7 @@ data class Light(
         return responseMap["new_name"] as String;
     }
     fun getOnline(cookie: String): Boolean? {
+        println("Checking online")
         val device = this
         val client = OkHttpClient()
         val mapType = object : TypeToken<Map<String, Any>>() {}.type

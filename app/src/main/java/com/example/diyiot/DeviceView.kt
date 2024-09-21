@@ -20,8 +20,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -39,11 +39,10 @@ import okhttp3.Request
 import okhttp3.Response
 import okio.IOException
 
-fun <T> makePairsFromList(list:List<T>?) : List<Pair<T,T?>>?{
-    if(list == null){
+fun <T> makePairsFromList(list: List<T>?): List<Pair<T, T?>>? {
+    if (list == null) {
         return null;
     }
-    println("List not null")
     val resultList = mutableListOf<Pair<T, T?>>();
     for (i in list.indices step 2) {
         resultList.add(
@@ -63,40 +62,46 @@ fun DeviceView(
     context: Context,
     device: MutableLiveData<Light>
 ) {
-
-    val client = OkHttpClient()
-    val cookie = getCookie(context).toString()
-    val devicesList = MutableLiveData< List<Pair<Light,Light?>>>()
-    val devices by devicesList.observeAsState()
-    val request = Request.Builder().url("http://frog01.mikr.us:22070/api/v1/full_devices")
-        .header("Cookie", cookie)
-        .get().build()
-    client.newCall(request).enqueue(object : Callback {
-        override fun onFailure(call: Call, e: IOException) {
-            // Handle this
-        }
-
-        override fun onResponse(call: Call, response: Response) {
-            val body = response.body?.string()
-//            println(body)
-            if (response.code == 200) {
-                val gson = Gson()
-                val pears =  makePairsFromList(gson.fromJson(
-                    body,
-                    GetDevicesResponse::class.java
-                ).lights)
-                println(pears)
-                devicesList.postValue(
-                   pears
-                )
-            } else {
-                println("Auth failure")
+//    val devicesList = MutableLiveData<List<Pair<Light, Light?>>>()
+    var devices:List<Pair<Light, Light?>>? by remember {
+        mutableStateOf(null)
+    }
+    var cookie by remember {
+        mutableStateOf("")
+    }
+    LaunchedEffect(Unit) {
+        println("Fetching devices")
+        val client = OkHttpClient()
+        cookie = getCookie(context).toString()
+        val request = Request.Builder().url("http://frog01.mikr.us:22070/api/v1/full_devices")
+            .header("Cookie", cookie)
+            .get().build()
+        client.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                // Handle this
             }
 
+            override fun onResponse(call: Call, response: Response) {
+                val body = response.body?.string()
+                if (response.code == 200) {
+                    val gson = Gson()
+                    val pears = makePairsFromList(
+                        gson.fromJson(
+                            body,
+                            GetDevicesResponse::class.java
+                        ).lights
+                    )
+                    devices=pears
+                } else {
+                    println("Auth failure")
+                }
 
-            // Handle this
-        }
-    })
+
+                // Handle this
+            }
+        })
+    }
+
     var showDialog by remember {
         mutableStateOf(false)
     }
@@ -144,10 +149,7 @@ fun DeviceView(
                 Spacer(modifier = Modifier.weight(1f))
             }
             LazyColumn {
-//                println(devicesList.value)
-
                 if (devices != null) {
-                    println(devices!!)
                     items(devices!!) { item ->
                         Row {
                             LightView(item.first, cookie, onNavigateToDetails, device)

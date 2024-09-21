@@ -6,6 +6,7 @@ import android.bluetooth.BluetoothGatt
 import android.bluetooth.BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE
 import android.bluetooth.BluetoothManager
 import android.bluetooth.le.ScanFilter
+import android.bluetooth.le.ScanResult
 import android.bluetooth.le.ScanSettings
 import android.content.Context
 import android.content.Intent
@@ -66,6 +67,7 @@ import androidx.core.app.ActivityCompat
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.util.UUID
 import kotlin.math.min
 
@@ -182,7 +184,11 @@ fun WifiDialog(onDismissRequest: () -> Unit, deviceConnection: BluetoothGatt?, c
                         return@Button
                     }
                     val notifyUUID = UUID.fromString("987312e0-2354-11eb-9f10-fbc30a62cf50")
-                    deviceConnection.setCharacteristicNotification( deviceConnection.services[0].getCharacteristic(notifyUUID),true)
+                    deviceConnection.setCharacteristicNotification(
+                        deviceConnection.services[0].getCharacteristic(
+                            notifyUUID
+                        ), true
+                    )
                     val ssidData = "....$mSelectedWifiText...."
                     for (i in ssidData.indices step 20) {
                         if (i >= ssidData.length) {
@@ -207,7 +213,7 @@ fun WifiDialog(onDismissRequest: () -> Unit, deviceConnection: BluetoothGatt?, c
                         )
                         Thread.sleep(200)
                     }
-                    // TODO Maybe close the popup
+                    // TODO Maybe close the popup and read the device secret and create the device
                 }) {
                     Text("Connect")
                 }
@@ -215,24 +221,37 @@ fun WifiDialog(onDismissRequest: () -> Unit, deviceConnection: BluetoothGatt?, c
         }
     }
 }
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable()
 fun AddDeviceView(context: Context) {
+    var scanOnce by remember { mutableStateOf(false) }
+
     var showWifiDialog by remember { mutableStateOf(false) }
     val bluetoothManager: BluetoothManager? =
         context.getSystemService(BluetoothManager::class.java)
-    val bluetoothAdapter: BluetoothAdapter? = bluetoothManager?.getAdapter()
+    val bluetoothAdapter: BluetoothAdapter? = bluetoothManager?.adapter
+
     var deviceConnection: BluetoothGatt? by remember {
         mutableStateOf(null)
+    }
+    if (showWifiDialog) {
+        WifiDialog({ showWifiDialog = false }, deviceConnection, context)
+    }
+    var availableDevices:MutableMap<String, ScanResult> by remember { mutableStateOf(mutableMapOf()) }
+    val callback = DeviceScanCallback { devices -> availableDevices = devices }
+
+//    var availableDevices:MutableMap<String,ScanResult> by remember {
+//        mutableStateOf(mutableMapOf())
+//    }
+
+    var isScanning by remember {
+        mutableStateOf(true)
     }
     if (bluetoothAdapter == null) {
         // Device doesn't support Bluetooth
         // TODO maybe actually do something if we dont have bluetooth
     }
-    if (showWifiDialog) {
-        WifiDialog({ showWifiDialog = false }, deviceConnection, context)
-    }
+
     if (bluetoothAdapter?.isEnabled == false) {
         val enableBtIntent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
 
@@ -248,136 +267,140 @@ fun AddDeviceView(context: Context) {
             //                                          int[] grantResults)
             // to handle the case where the user grants the permission. See the documentation
             // for ActivityCompat#requestPermissions for more details.
-            return
+//                return
         }
         context.startActivity(enableBtIntent)
     }
 
     val leScanner = bluetoothAdapter?.bluetoothLeScanner
     if (leScanner != null) {
-        var builder = ScanFilter.Builder()
+        val builder = ScanFilter.Builder()
         // TODO Find a suitable uuid
         val filter: ScanFilter =
             builder.setServiceUuid(ParcelUuid.fromString("00001809-0000-1000-8000-00805f9b34fb"))
                 .build()
-        val callback = DeviceScanCallback()
-        val availableDevices by callback.devicesData.observeAsState(mutableMapOf())
-        var isScanning by remember {
-            mutableStateOf(true)
-        }
+
         val settingsBuilder = ScanSettings.Builder()
-        CoroutineScope(Dispatchers.IO).launch {
-            leScanner.startScan(listOf(filter), settingsBuilder.build(), callback)
-            Thread.sleep(3 * 1000)
-            leScanner.stopScan(callback)
-            println("Done scanning")
-            callback.devices.forEach { entry ->
-                val result = entry.value
-                println(result.device.name)
-                println(result.device.address)
-                println(result.scanRecord?.serviceUuids)
-            }
-            isScanning = false
-        }
-        val gattCallback = DeviceGattCallback()
-        val services by gattCallback.services.observeAsState(mutableListOf())
-        Scaffold(topBar = {
-            CenterAlignedTopAppBar(
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background,
-                    titleContentColor = MaterialTheme.colorScheme.primary,
-                ),
-                title = {
-                    Text(
-                        text = "Available devices"
-                    )
-                },
-                navigationIcon = {
-                    IconButton(onClick = { /* do something */ }) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Localized description"
-                        )
+        if (!scanOnce) {
+            println("Begin scan")
+            CoroutineScope(Dispatchers.IO).launch {
+                withContext(Dispatchers.Main) {
+                    scanOnce = true
+                }
+                println("Scanning")
+                leScanner.startScan(listOf(filter), settingsBuilder.build(), callback)
+                Thread.sleep(5 * 1000)
+                leScanner.stopScan(callback)
+                println("Done scanning")
+                withContext(Dispatchers.Main) {
+                    callback.devicesData.value?.forEach { entry ->
+                        val result = entry.value
+                        println(result.device.name)
+                        println(result.device.address)
+                        println(result.scanRecord?.serviceUuids)
                     }
-                })
+                    println(availableDevices)
+                    isScanning = false
+                }
+
+            }
         }
+    }
+    val gattCallback = DeviceGattCallback()
+    val services by gattCallback.services.observeAsState(mutableListOf())
+
+    Scaffold(topBar = {
+        CenterAlignedTopAppBar(
+            colors = TopAppBarDefaults.topAppBarColors(
+                containerColor = MaterialTheme.colorScheme.background,
+                titleContentColor = MaterialTheme.colorScheme.primary,
+            ),
+            title = {
+                Text(
+                    text = "Available devices: ${availableDevices.size}"
+                )
+            },
+            navigationIcon = {
+                IconButton(onClick = { /* do something */ }) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "Localized description"
+                    )
+                }
+            })
+    }
+    ) {
+        Column(
+            modifier = Modifier.padding(it),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Column(
-                modifier = Modifier.padding(it),
+            if (isScanning) {
+                Row {
+                    Spacer(modifier = Modifier.weight(1f))
+                    CircularProgressIndicator(
+                        modifier = Modifier
+                            .width(64.dp),
+                        strokeWidth = 10.dp,
+                    )
+                    Spacer(modifier = Modifier.weight(1f))
+                }
+
+            }
+            if (services.isNotEmpty()) {
+                val characteristic =
+                    services[0].characteristics.filter { bluetoothGattCharacteristic ->
+                        bluetoothGattCharacteristic.uuid == UUID.fromString(
+                            "00002137-0000-1000-8000-00805F9B34FB"
+                        )
+                    }[0]
+
+                gattCallback.gatt?.readCharacteristic(characteristic)
+            }
+            LazyColumn(
+                Modifier.padding(0.dp, 0.dp, 0.dp, 0.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                if (isScanning) {
-                    Row {
-                        Spacer(modifier = Modifier.weight(1f))
-                        CircularProgressIndicator(
-                            modifier = Modifier
-                                .width(64.dp),
-                            strokeWidth = 10.dp,
-                        )
-                        Spacer(modifier = Modifier.weight(1f))
-                    }
+                if (availableDevices.isNotEmpty()) {
+                    items(availableDevices.values.toMutableList()) { result ->
 
-                }
-                if (services.isNotEmpty()) {
-                    val characteristic =
-                        services[0].characteristics.filter { bluetoothGattCharacteristic ->
-                            bluetoothGattCharacteristic.uuid == UUID.fromString(
-                                "00002137-0000-1000-8000-00805F9B34FB"
+
+                        Row(modifier = Modifier.align(Alignment.CenterHorizontally)) {
+                            Spacer(modifier = Modifier.weight(1f))
+                            Text(
+                                text = if (result.device.name == null) "n/a" else result.device.name,
+                                fontSize = 20.sp,
+                                modifier = Modifier
+                                    .weight(2.5f)
+                                    .align(Alignment.CenterVertically)
                             )
-                        }[0]
+                            Spacer(modifier = Modifier.weight(1f))
+                            TextButton(
+                                onClick =
+                                {
+                                    val connection =
+                                        result.device.connectGatt(
+                                            context,
+                                            true,
+                                            gattCallback
+                                        )
+                                    while (connection.services.isEmpty()) {
+                                    }
+                                    println(connection.services)
+                                    deviceConnection = connection
 
-                    gattCallback.gatt?.readCharacteristic(characteristic)
-                }
-                LazyColumn(
-                    Modifier.padding(0.dp, 0.dp, 0.dp, 0.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    if (availableDevices != null) {
-                        items(availableDevices.values.toMutableList()) { result ->
-
-
-                            Row(modifier = Modifier.align(Alignment.CenterHorizontally)) {
-                                Spacer(modifier = Modifier.weight(1f))
-                                Text(
-                                    text = if (result.device.name == null) "n/a" else result.device.name,
-                                    fontSize = 20.sp,
-                                    modifier = Modifier
-                                        .weight(2.5f)
-                                        .align(Alignment.CenterVertically)
-                                )
-                                Spacer(modifier = Modifier.weight(1f))
-                                TextButton(
-                                    onClick =
-                                    {
-                                        val connection =
-                                            result.device.connectGatt(
-                                                context,
-                                                true,
-                                                gattCallback
-                                            )
-                                        while (connection.services.isEmpty()) {
-                                        }
-                                        println(connection.services)
-                                        deviceConnection = connection
-
-                                        showWifiDialog = true
+                                    showWifiDialog = true
 //                                        connection.disconnect()
-                                    },
-                                    modifier = Modifier.align(Alignment.CenterVertically)
-                                ) {
-                                    Text("Connect", fontSize = 20.sp)
-                                }
-                                Spacer(modifier = Modifier.weight(1f))
+                                },
+                                modifier = Modifier.align(Alignment.CenterVertically)
+                            ) {
+                                Text("Connect", fontSize = 20.sp)
                             }
+                            Spacer(modifier = Modifier.weight(1f))
                         }
                     }
                 }
             }
-
-
         }
-    } else {
-        println("Scanner is null")
     }
 }
 

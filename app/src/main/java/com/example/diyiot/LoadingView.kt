@@ -9,6 +9,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
@@ -27,10 +28,13 @@ fun LoadingView(
     cookie: String? = null
 ) {
     val user by userData.observeAsState()
-    fetchUser(cookie, userData)
-    println("${userData.isInitialized}")
+    LaunchedEffect(Unit){
+        fetchUser(cookie, userData)
+        println("${userData.isInitialized}")
+    }
 
     if (userData.isInitialized && user?.id != -1) {
+        println("Stopped loading")
         navController.navigate("deviceView")
     } else if (userData.isInitialized) {
         navController.navigate("login")
