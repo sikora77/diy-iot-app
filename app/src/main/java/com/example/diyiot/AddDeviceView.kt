@@ -8,10 +8,14 @@ import android.bluetooth.BluetoothManager
 import android.bluetooth.le.ScanFilter
 import android.bluetooth.le.ScanResult
 import android.bluetooth.le.ScanSettings
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
+import android.net.wifi.WifiManager
 import android.os.ParcelUuid
+import android.widget.Spinner
 import androidx.activity.compose.ManagedActivityResultLauncher
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -71,156 +75,7 @@ import kotlinx.coroutines.withContext
 import java.util.UUID
 import kotlin.math.min
 
-@Composable
-fun WifiDialog(onDismissRequest: () -> Unit, deviceConnection: BluetoothGatt?, context: Context) {
-    if (deviceConnection == null) {
-        onDismissRequest()
-        return
-    }
-    println("Services in popup: ${deviceConnection.services}")
-    if (deviceConnection.services.isEmpty()) {
-        onDismissRequest()
-        return
-    }
-    val ssidWriteUuid = UUID.fromString("937312e0-2354-11eb-9f10-fbc30a62cf39")
-    val passWriteUuid = UUID.fromString("987312e0-2354-11eb-9f10-fbc30a62cf40")
-    val ssidWriteChar = deviceConnection.services[0].getCharacteristic(ssidWriteUuid)
-    val passWriteChar = deviceConnection.services[0].getCharacteristic(passWriteUuid)
-    if (ssidWriteChar == null || passWriteChar == null) {
-        println("A characteristic is null")
-        deviceConnection.services[0].characteristics.forEach { characteristic ->
-            if (characteristic.uuid == passWriteUuid) {
-                print("The password one: ")
-            } else if (characteristic.uuid == ssidWriteUuid) {
-                print("The ssid one: ")
-            }
-            println(characteristic.uuid)
-        }
-        onDismissRequest()
-        return
 
-    }
-    Dialog(onDismissRequest = { onDismissRequest() }) {
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(500.dp)
-                .padding(16.dp),
-            shape = RoundedCornerShape(16.dp),
-        ) {
-
-            var mExpanded by remember {
-                mutableStateOf(false)
-            }
-            var mShowPassword by remember {
-                mutableStateOf(false)
-            }
-            var mSelectedWifiText by remember { mutableStateOf("") }
-            var mSelectedPassText by remember { mutableStateOf("") }
-
-            var mTextFieldSize by remember { mutableStateOf(Size.Zero) }
-            val mWifiNetworks = listOf("hakuna matata", "hakuna matata EXT")
-            val wifiExpandIcon = if (mExpanded)
-                Icons.Filled.KeyboardArrowUp
-            else
-                Icons.Filled.KeyboardArrowDown
-            val showPasswordIcon =
-                if (mShowPassword) Icons.Filled.Visibility else Icons.Filled.VisibilityOff
-
-            Column(Modifier.padding(20.dp)) {
-                OutlinedTextField(
-                    value = mSelectedWifiText,
-                    onValueChange = { mSelectedWifiText = it },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .onGloballyPositioned { coordinates ->
-                            // This value is used to assign to
-                            // the DropDown the same width
-                            mTextFieldSize = coordinates.size.toSize()
-                        },
-                    label = { Text("WiFi name") },
-                    trailingIcon = {
-                        Icon(wifiExpandIcon, "contentDescription",
-                            Modifier.clickable { mExpanded = !mExpanded })
-                    }
-                )
-                DropdownMenu(
-                    expanded = mExpanded,
-                    onDismissRequest = { mExpanded = false },
-                    modifier = Modifier
-                        .width(with(LocalDensity.current) { mTextFieldSize.width.toDp() })
-                ) {
-                    mWifiNetworks.forEach { label ->
-                        DropdownMenuItem(onClick = {
-                            mSelectedWifiText = label
-                            mExpanded = false
-                        }, text = { Text(text = label) })
-                    }
-                }
-                OutlinedTextField(
-                    value = mSelectedPassText,
-                    onValueChange = { mSelectedPassText = it },
-                    modifier = Modifier
-                        .fillMaxWidth(),
-                    label = { Text("Password") },
-                    trailingIcon = {
-                        Icon(showPasswordIcon, "show password",
-                            Modifier.clickable { mShowPassword = !mShowPassword })
-                    }
-                )
-                Button(onClick = {
-                    if (ActivityCompat.checkSelfPermission(
-                            context,
-                            Manifest.permission.BLUETOOTH_CONNECT
-                        ) != PackageManager.PERMISSION_GRANTED
-                    ) {
-                        // TODO: Consider calling
-                        //    ActivityCompat#requestPermissions
-                        // here to request the missing permissions, and then overriding
-                        //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
-                        //                                          int[] grantResults)
-                        // to handle the case where the user grants the permission. See the documentation
-                        // for ActivityCompat#requestPermissions for more details.
-                        return@Button
-                    }
-                    val notifyUUID = UUID.fromString("987312e0-2354-11eb-9f10-fbc30a62cf50")
-                    deviceConnection.setCharacteristicNotification(
-                        deviceConnection.services[0].getCharacteristic(
-                            notifyUUID
-                        ), true
-                    )
-                    val ssidData = "....$mSelectedWifiText...."
-                    for (i in ssidData.indices step 20) {
-                        if (i >= ssidData.length) {
-                            break
-                        }
-                        deviceConnection.writeCharacteristic(
-                            ssidWriteChar,
-                            ssidData.substring(i, min(i + 20, ssidData.length)).encodeToByteArray(),
-                            WRITE_TYPE_NO_RESPONSE
-                        )
-                        Thread.sleep(200)
-                    }
-                    val passData = "....$mSelectedPassText...."
-                    for (i in passData.indices step 20) {
-                        if (i >= passData.length) {
-                            break
-                        }
-                        deviceConnection.writeCharacteristic(
-                            passWriteChar,
-                            passData.substring(i, min(i + 20, passData.length)).encodeToByteArray(),
-                            WRITE_TYPE_NO_RESPONSE
-                        )
-                        Thread.sleep(200)
-                    }
-                    // TODO Maybe close the popup and read the device secret and create the device
-                }) {
-                    Text("Connect")
-                }
-            }
-        }
-    }
-}
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable()
 fun AddDeviceView(context: Context) {
