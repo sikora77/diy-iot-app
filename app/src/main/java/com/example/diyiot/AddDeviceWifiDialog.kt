@@ -50,7 +50,6 @@ fun WifiDialog(
     onDismissRequest: () -> Unit,
     deviceConnection: BluetoothGatt?,
     context: Context,
-    gattCallback: DeviceGattCallback
 ) {
     if (deviceConnection == null) {
         onDismissRequest()

@@ -5,15 +5,16 @@ import android.bluetooth.BluetoothGatt
 import android.bluetooth.BluetoothGattCallback
 import android.bluetooth.BluetoothGattCharacteristic
 import android.bluetooth.BluetoothGattService
+import android.content.Context
 import androidx.lifecycle.MutableLiveData
 import java.util.UUID
 
-class DeviceGattCallback(private val confirmWifi:()->Unit) : BluetoothGattCallback() {
+class DeviceGattCallback(private val context: Context) : BluetoothGattCallback() {
     var services: MutableLiveData<MutableList<BluetoothGattService>> =
         MutableLiveData<MutableList<BluetoothGattService>>(mutableListOf())
     var gatt: BluetoothGatt? = null
-    var deviceId:String? = null
-    var deviceSecret:String? = null
+    private var deviceId:String? = null
+    private var deviceSecret:String? = null
 
     @SuppressLint("MissingPermission")
     override fun onConnectionStateChange(gatt: BluetoothGatt?, status: Int, newState: Int) {
@@ -94,7 +95,7 @@ class DeviceGattCallback(private val confirmWifi:()->Unit) : BluetoothGattCallba
                     BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE
                 )
                 Thread.sleep(200)
-                confirmWifi()
+                registerDevice(deviceId, deviceSecret, "App light", context)
             }
 
         }

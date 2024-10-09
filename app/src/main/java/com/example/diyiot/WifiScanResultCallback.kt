@@ -30,9 +30,9 @@ class WifiScanResultCallback(private var context: Context,private val setWifiRes
         val results =  wifiManager.scanResults
         setWifiResults(results)
         // Process the scan results
-        for (result in results) {
-            Log.d("WifiScanner", "SSID: ${result.SSID}, BSSID: ${result.BSSID}")
-        }
+//        for (result in results) {
+//            Log.d("WifiScanner", "SSID: ${result.SSID}, BSSID: ${result.BSSID}")
+//        }
     }
 
     fun onScanFailed() {
