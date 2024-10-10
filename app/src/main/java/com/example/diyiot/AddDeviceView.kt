@@ -64,12 +64,12 @@ import okio.IOException
 import java.util.UUID
 
 fun registerDevice(deviceId: String?, deviceSecret: String?, deviceName: String, context: Context) {
-    Log.d("Id",deviceId.toString())
-    Log.d("Secret",deviceSecret.toString())
     if (deviceId.isNullOrBlank() || deviceSecret.isNullOrBlank()) {
         Log.e("", "Name or secret is null")
         return
     }
+    Log.d("Id",deviceId)
+    Log.d("Secret",deviceSecret)
     val cookie = getCookie(context)
     if (cookie.isNullOrBlank()) {
         return
@@ -81,7 +81,7 @@ fun registerDevice(deviceId: String?, deviceSecret: String?, deviceName: String,
     //TODO the device probably breakes because of the secret characters, need to fix on esp side
     val body =
         "{\"id\": \"${deviceId}\",\"type_\": \"light_non_rgb\",\"secret\": \"${deviceSecret}\",\"name\": \"${deviceName}\"}"
-
+    Log.d("HTTP",body)
     val request = Request.Builder()
         .url("http://frog01.mikr.us:22070/api/v1/register_device")
         .post(body.toRequestBody(mediaType))

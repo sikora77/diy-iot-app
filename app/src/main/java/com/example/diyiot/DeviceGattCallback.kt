@@ -31,11 +31,11 @@ class DeviceGattCallback(private val context: Context) : BluetoothGattCallback()
         println(value.decodeToString())
         if(characteristic.uuid==UUID.fromString("987312e0-2354-11eb-9f10-fbc30a62cf38")){
             println("Set secret")
-            deviceSecret = value.toString()
+            deviceSecret = String(value,Charsets.US_ASCII)
         }
         else if (characteristic.uuid == UUID.fromString("00002137-0000-1000-8000-00805F9B34FB")){
             println("Set id")
-            deviceId = value.toString()
+            deviceId = String(value,Charsets.US_ASCII)
         }
         super.onCharacteristicRead(gatt, characteristic, value, status)
     }
