@@ -79,8 +79,9 @@ fun registerDevice(deviceId: String?, deviceSecret: String?, deviceName: String,
 
     val mediaType = "application/json".toMediaTypeOrNull()
     //TODO the device probably breakes because of the secret characters, need to fix on esp side
-    val body =
-        "{\"id\": \"${deviceId}\",\"type_\": \"light_non_rgb\",\"secret\": \"${deviceSecret}\",\"name\": \"${deviceName}\"}"
+    val body = "{\n\t\"id\": \"${deviceId}\",\n\t\"type_\": \"light_non_rgb\",\n\t\"secret\": \"${deviceSecret}\",\n\t\"name\": \"${deviceName}\"\n}"
+//    val body =
+//        "{\"id\": \"${deviceId}\",\"type_\": \"light_non_rgb\",\"secret\": \"${deviceSecret}\",\"name\": \"${deviceName}\"}"
     Log.d("HTTP",body)
     val request = Request.Builder()
         .url("http://frog01.mikr.us:22070/api/v1/register_device")
@@ -118,6 +119,7 @@ fun AddDeviceView(context: Context) {
     var scanOnce by remember { mutableStateOf(false) }
 
     var showWifiDialog by remember { mutableStateOf(false) }
+    var showWifiDummyDialog by remember { mutableStateOf(false) }
     val bluetoothManager: BluetoothManager? =
         context.getSystemService(BluetoothManager::class.java)
     val bluetoothAdapter: BluetoothAdapter? = bluetoothManager?.adapter
@@ -196,9 +198,11 @@ fun AddDeviceView(context: Context) {
     }
     val gattCallback = DeviceGattCallback(context)
     val services by gattCallback.services.observeAsState(mutableListOf())
-
     if (showWifiDialog) {
         WifiDialog({ showWifiDialog = false }, deviceConnection, context)
+    }
+    if (showWifiDummyDialog) {
+        WifiDialogDummy({ showWifiDummyDialog = false }, context)
     }
     Scaffold(topBar = {
         CenterAlignedTopAppBar(
@@ -212,7 +216,9 @@ fun AddDeviceView(context: Context) {
                 )
             },
             navigationIcon = {
-                IconButton(onClick = { /* do something */ }) {
+                IconButton(onClick = {
+                    println("Pressed back")
+                    showWifiDummyDialog=true}) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = "Localized description"

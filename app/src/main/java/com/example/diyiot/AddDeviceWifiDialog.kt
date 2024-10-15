@@ -7,13 +7,16 @@ import android.content.Context
 import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.net.wifi.WifiManager
+import android.widget.Toast
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
@@ -37,13 +40,23 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.toSize
 import androidx.compose.ui.window.Dialog
 import androidx.core.app.ActivityCompat
 import java.util.UUID
-import kotlin.concurrent.thread
 import kotlin.math.min
+
+fun showErrorToast(context: Context) {
+    val text = "Device Connection is null"
+    val duration = Toast.LENGTH_SHORT
+
+    val toast = Toast.makeText(context, text, duration) // in Activity
+    toast.show()
+
+}
 
 @Composable
 fun WifiDialog(
@@ -52,6 +65,7 @@ fun WifiDialog(
     context: Context,
 ) {
     if (deviceConnection == null) {
+        showErrorToast(context)
         onDismissRequest()
         return
     }
@@ -107,6 +121,7 @@ fun WifiDialog(
             var mShowPassword by remember {
                 mutableStateOf(false)
             }
+            var mDropdownHeight by remember { mutableStateOf(80) }
             var mSelectedWifiText by remember { mutableStateOf("") }
             var mSelectedPassText by remember { mutableStateOf("") }
 
@@ -118,9 +133,9 @@ fun WifiDialog(
                 Icons.Filled.KeyboardArrowDown
             val showPasswordIcon =
                 if (mShowPassword) Icons.Filled.Visibility else Icons.Filled.VisibilityOff
-            if(!getDataOnce){
+            if (!getDataOnce) {
                 getDeviceData(deviceConnection)
-                getDataOnce=true
+                getDataOnce = true
             }
             Column(Modifier.padding(20.dp)) {
                 OutlinedTextField(
@@ -139,15 +154,17 @@ fun WifiDialog(
                             Modifier.clickable { mExpanded = !mExpanded })
                     }
                 )
+
                 DropdownMenu(
                     expanded = mExpanded,
                     onDismissRequest = { mExpanded = false },
                     modifier = Modifier
                         .width(with(LocalDensity.current) { mTextFieldSize.width.toDp() })
-                        .height(80.dp)
+                        .height(mDropdownHeight.dp)
                 ) {
 
                     if (mWifiNetworks.isEmpty()) {
+                        mDropdownHeight = 80
                         CircularProgressIndicator(
                             modifier = Modifier
                                 .width(64.dp)
@@ -155,6 +172,7 @@ fun WifiDialog(
                             strokeWidth = 10.dp
                         )
                     } else {
+                        mDropdownHeight = 400
                         mWifiNetworks.forEach { label ->
                             DropdownMenuItem(onClick = {
                                 mSelectedWifiText = label
@@ -247,6 +265,132 @@ private fun getDeviceData(deviceConnection: BluetoothGatt) {
         deviceConnection.services[0].getCharacteristic(deviceSecretReadUuid)
     deviceConnection.readCharacteristic(deviceUUIDCharacteristic)
     Thread.sleep(300)
-    val readSecret=deviceConnection.readCharacteristic(deviceSecretCharacteristic)
+    val readSecret = deviceConnection.readCharacteristic(deviceSecretCharacteristic)
     println("Reading secret: ${readSecret}")
+}
+
+@Composable
+fun WifiDialogDummy(
+    onDismissRequest: () -> Unit,
+    context: Context,
+) {
+    var wifiList: List<android.net.wifi.ScanResult> by remember {
+        mutableStateOf(listOf())
+    }
+
+    val wifiManager = context.getSystemService(Context.WIFI_SERVICE) as WifiManager
+    val intentFilter = IntentFilter()
+    intentFilter.addAction(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION)
+    val scanReceiver = WifiScanReceiver(wifiManager, context)
+    context.registerReceiver(scanReceiver, intentFilter)
+
+    val scanResultCallback = WifiScanResultCallback(context) { results -> wifiList = results }
+    wifiManager.registerScanResultsCallback(context.mainExecutor, scanResultCallback)
+    wifiManager.startScan()
+
+    var getDataOnce = false
+    Dialog(onDismissRequest = { onDismissRequest() }) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(500.dp)
+                .padding(16.dp),
+            shape = RoundedCornerShape(16.dp),
+        ) {
+
+            var mExpanded by remember {
+                mutableStateOf(false)
+            }
+            var mShowPassword by remember {
+                mutableStateOf(false)
+            }
+            var mDropdownHeight by remember { mutableStateOf(80) }
+            var mSelectedWifiText by remember { mutableStateOf("") }
+            var mSelectedPassText by remember { mutableStateOf("") }
+
+            var mTextFieldSize by remember { mutableStateOf(Size.Zero) }
+            val mWifiNetworks = wifiList.map { it -> it.SSID }
+            val wifiExpandIcon = if (mExpanded)
+                Icons.Filled.KeyboardArrowUp
+            else
+                Icons.Filled.KeyboardArrowDown
+            val showPasswordIcon =
+                if (mShowPassword) Icons.Filled.Visibility else Icons.Filled.VisibilityOff
+            if (!getDataOnce) {
+                getDataOnce = true
+            }
+            Column {
+                // TODO Add a title here
+                Column(Modifier.padding(20.dp, 20.dp, 20.dp, 0.dp)) {
+                    OutlinedTextField(
+                        value = mSelectedWifiText,
+                        onValueChange = { mSelectedWifiText = it },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .onGloballyPositioned { coordinates ->
+                                // This value is used to assign to
+                                // the DropDown the same width
+                                mTextFieldSize = coordinates.size.toSize()
+                            },
+                        label = { Text("WiFi name") },
+                        trailingIcon = {
+                            Icon(wifiExpandIcon, "contentDescription",
+                                Modifier.clickable { mExpanded = !mExpanded })
+                        }
+                    )
+
+                    DropdownMenu(
+                        expanded = mExpanded,
+                        onDismissRequest = { mExpanded = false },
+                        modifier = Modifier
+                            .width(with(LocalDensity.current) { mTextFieldSize.width.toDp() })
+                            .height(mDropdownHeight.dp)
+                    ) {
+
+                        if (mWifiNetworks.isEmpty()) {
+                            mDropdownHeight = 80
+                            CircularProgressIndicator(
+                                modifier = Modifier
+                                    .width(64.dp)
+                                    .align(Alignment.CenterHorizontally),
+                                strokeWidth = 10.dp
+                            )
+                        } else {
+                            mDropdownHeight = 400
+                            mWifiNetworks.forEach { label ->
+                                DropdownMenuItem(onClick = {
+                                    mSelectedWifiText = label
+                                    mExpanded = false
+                                }, text = { Text(text = label) })
+                            }
+                        }
+                    }
+                }
+                Column(modifier = Modifier.padding(20.dp, 0.dp, 20.dp, 20.dp)) {
+                    OutlinedTextField(
+                        value = mSelectedPassText,
+                        onValueChange = { mSelectedPassText = it },
+                        visualTransformation = if (mShowPassword) VisualTransformation.None else PasswordVisualTransformation(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .onGloballyPositioned { coordinates ->
+                                // This value is used to assign to
+                                // the DropDown the same width
+                                mTextFieldSize = coordinates.size.toSize()
+                            },
+                        label = { Text("Password") },
+                        trailingIcon = {
+                            Icon(showPasswordIcon, "show password",
+                                Modifier.clickable { mShowPassword = !mShowPassword })
+                        }
+                    )
+                    Button(onClick = {
+
+                    }) {
+                        Text("Connect")
+                    }
+                }
+            }
+        }
+    }
 }
