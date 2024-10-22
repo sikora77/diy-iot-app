@@ -24,10 +24,13 @@ import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardColors
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -40,9 +43,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.toSize
 import androidx.compose.ui.window.Dialog
 import androidx.core.app.ActivityCompat
@@ -291,13 +296,15 @@ fun WifiDialogDummy(
     var getDataOnce = false
     Dialog(onDismissRequest = { onDismissRequest() }) {
         Card(
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceContainer
+            ),
             modifier = Modifier
                 .fillMaxWidth()
-                .height(500.dp)
+                .height(300.dp)
                 .padding(16.dp),
             shape = RoundedCornerShape(16.dp),
         ) {
-
             var mExpanded by remember {
                 mutableStateOf(false)
             }
@@ -321,9 +328,19 @@ fun WifiDialogDummy(
             }
             Column {
                 // TODO Add a title here
-                Column(Modifier.padding(20.dp, 20.dp, 20.dp, 0.dp)) {
+                Text(
+                    text = "Choose wifi network", modifier = Modifier
+                        .align(Alignment.CenterHorizontally)
+                        .padding(0.dp, 24.dp, 0.dp, 0.dp),
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.ExtraBold,
+                    fontSize = 20.sp
+                )
+
+                Column(Modifier.padding(20.dp, 8.dp, 20.dp, 0.dp)) {
                     OutlinedTextField(
                         value = mSelectedWifiText,
+                        maxLines = 1,
                         onValueChange = { mSelectedWifiText = it },
                         modifier = Modifier
                             .fillMaxWidth()
@@ -366,11 +383,12 @@ fun WifiDialogDummy(
                         }
                     }
                 }
-                Column(modifier = Modifier.padding(20.dp, 0.dp, 20.dp, 20.dp)) {
+                Column(modifier = Modifier.padding(20.dp, 8.dp, 20.dp, 20.dp)) {
                     OutlinedTextField(
                         value = mSelectedPassText,
                         onValueChange = { mSelectedPassText = it },
                         visualTransformation = if (mShowPassword) VisualTransformation.None else PasswordVisualTransformation(),
+                        maxLines = 1,
                         modifier = Modifier
                             .fillMaxWidth()
                             .onGloballyPositioned { coordinates ->
@@ -386,7 +404,7 @@ fun WifiDialogDummy(
                     )
                     Button(onClick = {
 
-                    }) {
+                    }, modifier = Modifier.padding(0.dp,16.dp,0.dp,0.dp)) {
                         Text("Connect")
                     }
                 }
