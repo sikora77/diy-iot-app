@@ -1,6 +1,7 @@
 package com.example.diyiot
 
 import android.content.Context
+import android.widget.Toast
 import androidx.lifecycle.MutableLiveData
 import com.google.gson.Gson
 import kotlinx.coroutines.CoroutineScope
@@ -37,4 +38,11 @@ fun fetchUser(
             userData.postValue(User("", "", -1, ""))
         }
     }
+}
+fun showToast(context: Context,text:String){
+    val duration = Toast.LENGTH_SHORT
+
+    val toast = Toast.makeText(context, text, duration) // in Activity
+    toast.show()
+
 }

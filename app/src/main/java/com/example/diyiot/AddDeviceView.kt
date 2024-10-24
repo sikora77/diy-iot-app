@@ -12,6 +12,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.ParcelUuid
 import android.util.Log
+import android.widget.Toast
 import androidx.activity.compose.ManagedActivityResultLauncher
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -48,6 +49,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.app.ActivityCompat
 import com.google.gson.Gson
+import com.google.gson.JsonObject
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -102,13 +104,15 @@ fun registerDevice(deviceId: String?, deviceSecret: String?, deviceName: String,
             println(body)
             if (response.code == 200) {
                 val gson = Gson()
+                val success = gson.fromJson(body, JsonObject::class.java).get("result").asBoolean
+                if (!success){
+                    showToast(context,"Something went wrong when creating the device")
+                }
+
                 println("Everything is okay")
             } else {
                 println("Auth failure")
             }
-
-
-            // Handle this
         }
     })
 }
