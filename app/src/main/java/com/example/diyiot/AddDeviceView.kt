@@ -65,7 +65,7 @@ import okhttp3.Response
 import okio.IOException
 import java.util.UUID
 
-fun registerDevice(deviceId: String?, deviceSecret: String?, deviceName: String, context: Context) {
+fun registerDevice(deviceId: String?, deviceSecret: String?, deviceName: String, context: Context,successFullRegisterCallback:()->Unit) {
     if (deviceId.isNullOrBlank() || deviceSecret.isNullOrBlank()) {
         Log.e("", "Name or secret is null")
         return
@@ -110,6 +110,7 @@ fun registerDevice(deviceId: String?, deviceSecret: String?, deviceName: String,
                 }
 
                 println("Everything is okay")
+                successFullRegisterCallback()
             } else {
                 println("Auth failure")
             }
@@ -119,7 +120,7 @@ fun registerDevice(deviceId: String?, deviceSecret: String?, deviceName: String,
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable()
-fun AddDeviceView(context: Context) {
+fun AddDeviceView(context: Context,navigateToMain:()->Unit) {
     var scanOnce by remember { mutableStateOf(false) }
 
     var showWifiDialog by remember { mutableStateOf(false) }
@@ -200,7 +201,7 @@ fun AddDeviceView(context: Context) {
             }
         }
     }
-    val gattCallback = DeviceGattCallback(context)
+    val gattCallback = DeviceGattCallback(context,navigateToMain)
     val services by gattCallback.services.observeAsState(mutableListOf())
     if (showWifiDialog) {
         WifiDialog({ showWifiDialog = false }, deviceConnection, context)

@@ -94,7 +94,7 @@ class MainActivity : ComponentActivity() {
                             )
                         }
                         composable("addDeviceView") {
-                            AddDeviceView(context)
+                            AddDeviceView(context,{navController.navigate(("deviceView"))})
                         }
                         composable("deviceDetails/{deviceJson}",
                             arguments = listOf(

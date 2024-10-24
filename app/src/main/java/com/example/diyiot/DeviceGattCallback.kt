@@ -9,7 +9,7 @@ import android.content.Context
 import androidx.lifecycle.MutableLiveData
 import java.util.UUID
 
-class DeviceGattCallback(private val context: Context) : BluetoothGattCallback() {
+class DeviceGattCallback(private val context: Context,private val onSuccesfulRegister:()->Unit) : BluetoothGattCallback() {
     var services: MutableLiveData<MutableList<BluetoothGattService>> =
         MutableLiveData<MutableList<BluetoothGattService>>(mutableListOf())
     var gatt: BluetoothGatt? = null
@@ -95,7 +95,7 @@ class DeviceGattCallback(private val context: Context) : BluetoothGattCallback()
                     BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE
                 )
                 Thread.sleep(200)
-                registerDevice(deviceId, deviceSecret, "App light", context)
+                registerDevice(deviceId, deviceSecret, "App light", context,{onSuccesfulRegister()})
             }
 
         }
